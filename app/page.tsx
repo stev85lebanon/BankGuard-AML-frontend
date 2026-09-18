@@ -1,8 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import api from "@/services/api";
 
+import api from "@/services/api";
+import Sidebar from "@/components/Sidebar";
+import Topbar from "@/components/Topbar";
+import SummaryCard from "@/components/SummaryCard";
+import TransactionTable from "@/components/TransactionTable";
 type Transaction = {
   _id: string;
   transaction_id: string;
@@ -22,25 +26,35 @@ export default function Home() {
     });
   }, []);
 
+  const highRisk = transactions.filter((t) => t.risk_score >= 50).length;
+  const countries = new Set(transactions.map((t) => t.country)).size;
+
   return (
-    <main className="p-8">
-      <h1 className="text-3xl font-bold mb-6">BankGuard AML Dashboard</h1>
+    <div className="flex bg-gray-100 min-h-screen">
+      <Sidebar />
 
-      <div className="space-y-4">
-        {transactions.map((transaction) => (
-          <div
-            key={transaction._id}
-            className="border rounded-xl p-4 shadow-sm"
-          >
-            <h2 className="font-semibold">{transaction.transaction_id}</h2>
+      <main className="flex-1">
+        <Topbar />
 
-            <p>Customer: {transaction.customer_id}</p>
-            <p>Amount: {transaction.amount} DKK</p>
-            <p>Country: {transaction.country}</p>
-            <p>Risk Score: {transaction.risk_score}</p>
+        <div className="p-8">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+            <SummaryCard
+              title="Total Transactions"
+              value={transactions.length}
+            />
+
+            <SummaryCard title="High Risk Cases" value={highRisk} />
+
+            <SummaryCard title="Countries" value={countries} />
           </div>
-        ))}
-      </div>
-    </main>
+
+          <h2 className="text-xl font-semibold mb-4">Transactions</h2>
+
+          <div className="space-y-3">
+            <TransactionTable transactions={transactions} />
+          </div>
+        </div>
+      </main>
+    </div>
   );
 }
