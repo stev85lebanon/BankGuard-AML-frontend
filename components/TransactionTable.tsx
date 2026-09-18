@@ -1,3 +1,4 @@
+import Link from "next/link";
 type Transaction = {
   _id: string;
   transaction_id: string;
@@ -37,8 +38,14 @@ export default function TransactionTable({
         <tbody>
           {transactions.map((transaction) => (
             <tr key={transaction._id} className="border-t hover:bg-gray-50">
-              <td className="p-4 font-medium">{transaction.transaction_id}</td>
-
+              <td className="p-4 font-semibold">
+                <Link
+                  href={`/transactions/${transaction.transaction_id}`}
+                  className="text-blue-600 hover:underline"
+                >
+                  {transaction.transaction_id}
+                </Link>
+              </td>
               <td className="p-4">{transaction.customer_id}</td>
 
               <td className="p-4">{transaction.amount.toLocaleString()} DKK</td>
