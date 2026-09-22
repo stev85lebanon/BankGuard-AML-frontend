@@ -19,13 +19,17 @@ type Transaction = {
 
 export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
-
+  const [search, setSearch] = useState("");
   useEffect(() => {
     api.get("/transactions").then((response) => {
       setTransactions(response.data.transactions);
     });
   }, []);
-
+  const filteredTransactions = transactions.filter(
+    (transaction) =>
+      transaction.transaction_id.toLowerCase().includes(search.toLowerCase()) ||
+      transaction.customer_id.toLowerCase().includes(search.toLowerCase()),
+  );
   const highRisk = transactions.filter((t) => t.risk_score >= 50).length;
   const countries = new Set(transactions.map((t) => t.country)).size;
 
@@ -49,9 +53,17 @@ export default function Home() {
           </div>
 
           <h2 className="text-xl font-semibold mb-4">Transactions</h2>
-
+          <div className="mb-6">
+            <input
+              type="text"
+              placeholder="Search by Transaction ID or Customer ID..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="w-full max-w-md px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+            />
+          </div>
           <div className="space-y-3">
-            <TransactionTable transactions={transactions} />
+            <TransactionTable transactions={filteredTransactions} />{" "}
           </div>
         </div>
       </main>
