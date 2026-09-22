@@ -7,6 +7,7 @@ type Transaction = {
   country: string;
   merchant: string;
   risk_score: number;
+  status?: string;
 };
 
 const riskBadge = (score: number) => {
@@ -16,7 +17,18 @@ const riskBadge = (score: number) => {
 
   return "bg-green-100 text-green-700";
 };
-
+const statusBadge = (status?: string) => {
+  switch (status) {
+    case "Under Review":
+      return "bg-yellow-100 text-yellow-700";
+    case "Cleared":
+      return "bg-green-100 text-green-700";
+    case "Escalated":
+      return "bg-red-100 text-red-700";
+    default:
+      return "bg-blue-100 text-blue-700";
+  }
+};
 export default function TransactionTable({
   transactions,
 }: {
@@ -32,6 +44,7 @@ export default function TransactionTable({
             <th className="p-4">Amount</th>
             <th className="p-4">Country</th>
             <th className="p-4">Risk</th>
+            <th className="p-4">Status</th>
           </tr>
         </thead>
 
@@ -59,6 +72,15 @@ export default function TransactionTable({
                   )}`}
                 >
                   {transaction.risk_score}
+                </span>
+              </td>
+              <td className="p-4">
+                <span
+                  className={`px-3 py-1 rounded-full text-sm font-medium ${statusBadge(
+                    transaction.status,
+                  )}`}
+                >
+                  {transaction.status ?? "Pending"}
                 </span>
               </td>
             </tr>
