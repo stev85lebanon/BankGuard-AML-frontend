@@ -1,10 +1,13 @@
 "use client";
 
 import { Upload } from "lucide-react";
+import { useRef, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 
 export default function ImportPage() {
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   return (
     <div className="flex bg-gray-100 min-h-screen">
       <Sidebar />
@@ -31,10 +34,32 @@ export default function ImportPage() {
             <p className="text-gray-500 mb-6">
               or choose a file from your computer
             </p>
-
-            <button className="bg-slate-900 text-white px-6 py-3 rounded-xl hover:bg-slate-800 transition">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".csv"
+              className="hidden"
+              onChange={(e) => {
+                if (e.target.files?.[0]) {
+                  setSelectedFile(e.target.files[0]);
+                }
+              }}
+            />
+            <button
+              onClick={() => fileInputRef.current?.click()}
+              className="bg-slate-900 text-white px-6 py-3 rounded-xl hover:bg-slate-800 transition"
+            >
               Choose File
             </button>
+            {selectedFile && (
+              <div className="mt-6 bg-gray-50 border rounded-xl p-4 text-left">
+                <p className="font-semibold">Selected File</p>
+                <p className="text-gray-600">{selectedFile.name}</p>
+                <p className="text-sm text-gray-500">
+                  {(selectedFile.size / 1024).toFixed(1)} KB
+                </p>
+              </div>
+            )}
           </div>
 
           <div className="mt-8 bg-white rounded-xl border p-6">

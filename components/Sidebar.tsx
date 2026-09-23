@@ -1,3 +1,5 @@
+"use client";
+import { usePathname } from "next/navigation";
 import {
   LayoutDashboard,
   Wallet,
@@ -9,6 +11,7 @@ import {
 import Link from "next/link";
 
 export default function Sidebar() {
+  const pathname = usePathname();
   return (
     <aside className="w-64 bg-slate-900 text-white min-h-screen p-6">
       <h1 className="text-2xl font-bold mb-8">BankGuard AML</h1>
@@ -16,7 +19,9 @@ export default function Sidebar() {
       <nav className="space-y-2">
         <Link
           href="/"
-          className="flex items-center gap-3 p-3 rounded-lg bg-slate-800 hover:bg-slate-700"
+          className={`flex items-center gap-3 p-3 rounded-lg transition ${
+            pathname === "/" ? "bg-slate-800 text-white" : "hover:bg-slate-800"
+          }`}
         >
           <LayoutDashboard size={20} />
           Dashboard
@@ -32,7 +37,11 @@ export default function Sidebar() {
 
         <Link
           href="/import"
-          className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800"
+          className={`flex items-center gap-3 p-3 rounded-lg transition ${
+            pathname === "/import"
+              ? "bg-slate-800 text-white"
+              : "hover:bg-slate-800"
+          }`}
         >
           <Upload size={20} />
           Import Dataset
