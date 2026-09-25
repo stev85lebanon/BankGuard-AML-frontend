@@ -7,6 +7,7 @@ import {
   ShieldCheck,
   Upload,
   Settings,
+  History,
 } from "lucide-react";
 import Link from "next/link";
 
@@ -46,7 +47,17 @@ export default function Sidebar() {
           <Upload size={20} />
           Import Dataset
         </Link>
-
+        <Link
+          href="/imports"
+          className={`flex items-center gap-3 p-3 rounded-lg transition ${
+            pathname === "/imports"
+              ? "bg-slate-800 text-white"
+              : "hover:bg-slate-800"
+          }`}
+        >
+          <History size={20} />
+          Import History
+        </Link>
         <Link
           href="/"
           className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800"

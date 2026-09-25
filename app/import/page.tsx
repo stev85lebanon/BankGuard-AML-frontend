@@ -4,10 +4,38 @@ import { Upload } from "lucide-react";
 import { useRef, useState } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
-
+import { useRouter } from "next/navigation";
+import Papa from "papaparse";
+import api from "@/services/api";
 export default function ImportPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewData, setPreviewData] = useState<Record<string, string>[]>([]);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const router = useRouter();
+  const [importing, setImporting] = useState(false);
+  const handleImport = async () => {
+    if (!selectedFile) return;
+
+    setImporting(true);
+
+    try {
+      const formData = new FormData();
+      formData.append("file", selectedFile);
+
+      const response = await api.post("/transactions/import", formData);
+
+      alert(
+        `Imported ${response.data.imported} transactions.\nDuplicates: ${response.data.duplicates}`,
+      );
+
+      router.push("/");
+    } catch (error) {
+      console.error(error);
+      alert("Import failed.");
+    } finally {
+      setImporting(false);
+    }
+  };
   return (
     <div className="flex bg-gray-100 min-h-screen">
       <Sidebar />
@@ -40,9 +68,21 @@ export default function ImportPage() {
               accept=".csv"
               className="hidden"
               onChange={(e) => {
-                if (e.target.files?.[0]) {
-                  setSelectedFile(e.target.files[0]);
-                }
+                const file = e.target.files?.[0];
+
+                if (!file) return;
+
+                setSelectedFile(file);
+
+                Papa.parse(file, {
+                  header: true,
+                  skipEmptyLines: true,
+                  complete: (results) => {
+                    setPreviewData(
+                      results.data.slice(0, 10) as Record<string, string>[],
+                    );
+                  },
+                });
               }}
             />
             <button
@@ -52,14 +92,51 @@ export default function ImportPage() {
               Choose File
             </button>
             {selectedFile && (
-              <div className="mt-6 bg-gray-50 border rounded-xl p-4 text-left">
+              <div className="mt-6 bg-gray-50 border rounded-xl p-4 text-left max-w-md mx-auto">
                 <p className="font-semibold">Selected File</p>
-                <p className="text-gray-600">{selectedFile.name}</p>
+                <p className="text-gray-700">{selectedFile.name}</p>
                 <p className="text-sm text-gray-500">
                   {(selectedFile.size / 1024).toFixed(1)} KB
                 </p>
               </div>
             )}
+            {previewData.length > 0 && (
+              <div className="mt-6 bg-white border rounded-xl p-4 text-left">
+                <h3 className="font-semibold mb-3">Preview (First 10 Rows)</h3>
+
+                <div className="overflow-x-auto">
+                  <table className="w-full text-sm">
+                    <thead className="bg-gray-50">
+                      <tr>
+                        {Object.keys(previewData[0]).map((key) => (
+                          <th key={key} className="p-3 text-left">
+                            {key}
+                          </th>
+                        ))}
+                      </tr>
+                    </thead>
+
+                    <tbody>
+                      {previewData.map((row, index) => (
+                        <tr key={index} className="border-t">
+                          {Object.values(row).map((value, i) => (
+                            <td key={i} className="p-3">
+                              {String(value)}
+                            </td>
+                          ))}
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
+            )}
+            <button
+              onClick={handleImport}
+              className="mt-6 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition"
+            >
+              Import to Database
+            </button>
           </div>
 
           <div className="mt-8 bg-white rounded-xl border p-6">
