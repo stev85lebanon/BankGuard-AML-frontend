@@ -1,4 +1,17 @@
+"use client";
+
+import { useState } from "react";
 import Link from "next/link";
+import { Trash2 } from "lucide-react";
+import api from "@/services/api";
+
+const TRANSACTION_STATUSES = [
+  "Pending",
+  "Under Review",
+  "Cleared",
+  "Escalated",
+] as const;
+
 type Transaction = {
   _id: string;
   transaction_id: string;
@@ -9,6 +22,8 @@ type Transaction = {
   risk_score: number;
   status?: string;
 };
+
+type Status = (typeof TRANSACTION_STATUSES)[number];
 
 const riskBadge = (score: number) => {
   if (score >= 50) return "bg-red-100 text-red-700";
@@ -31,9 +46,51 @@ const statusBadge = (status?: string) => {
 };
 export default function TransactionTable({
   transactions,
+  onStatusChange,
+  onDelete,
 }: {
   transactions: Transaction[];
+  onStatusChange: (transactionId: string, status: Status) => void;
+  onDelete: (transactionId: string) => void;
 }) {
+  const [updatingId, setUpdatingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+
+  const updateStatus = async (transactionId: string, status: Status) => {
+    setUpdatingId(transactionId);
+    setActionError(null);
+
+    try {
+      await api.patch(`/transactions/${transactionId}/status`, { status });
+      onStatusChange(transactionId, status);
+    } catch (error) {
+      console.error("Could not update transaction status:", error);
+      setActionError(`Could not update ${transactionId}. Please try again.`);
+    } finally {
+      setUpdatingId(null);
+    }
+  };
+
+  const deleteTransaction = async (transactionId: string) => {
+    const confirmed = window.confirm(
+      `Delete transaction ${transactionId}? This action cannot be undone.`,
+    );
+    if (!confirmed) return;
+
+    setDeletingId(transactionId);
+    setActionError(null);
+    try {
+      await api.delete(`/transactions/${transactionId}`);
+      onDelete(transactionId);
+    } catch (error) {
+      console.error("Could not delete transaction:", error);
+      setActionError(`Could not delete ${transactionId}. Please try again.`);
+    } finally {
+      setDeletingId(null);
+    }
+  };
+
   return (
     <div className="bg-white rounded-xl shadow-sm border overflow-hidden">
       <table className="w-full">
@@ -45,6 +102,7 @@ export default function TransactionTable({
             <th className="p-4">Country</th>
             <th className="p-4">Risk</th>
             <th className="p-4">Status</th>
+            <th className="p-4">Actions</th>
           </tr>
         </thead>
 
@@ -75,18 +133,45 @@ export default function TransactionTable({
                 </span>
               </td>
               <td className="p-4">
-                <span
-                  className={`px-3 py-1 rounded-full text-sm font-medium ${statusBadge(
+                <select
+                  aria-label={`Status for transaction ${transaction.transaction_id}`}
+                  value={transaction.status ?? "Pending"}
+                  disabled={updatingId === transaction.transaction_id}
+                  onChange={(event) =>
+                    updateStatus(transaction.transaction_id, event.target.value as Status)
+                  }
+                  className={`rounded-full border-0 px-3 py-1 text-sm font-medium cursor-pointer focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 disabled:cursor-wait disabled:opacity-60 ${statusBadge(
                     transaction.status,
                   )}`}
                 >
-                  {transaction.status ?? "Pending"}
-                </span>
+                  {TRANSACTION_STATUSES.map((status) => (
+                    <option key={status} value={status}>
+                      {status}
+                    </option>
+                  ))}
+                </select>
+              </td>
+              <td className="p-4">
+                <button
+                  type="button"
+                  aria-label={`Delete transaction ${transaction.transaction_id}`}
+                  title="Delete transaction"
+                  disabled={deletingId === transaction.transaction_id}
+                  onClick={() => deleteTransaction(transaction.transaction_id)}
+                  className="inline-flex items-center justify-center rounded-lg p-2 text-gray-500 transition-colors hover:bg-red-50 hover:text-red-700 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500 disabled:cursor-wait disabled:opacity-50"
+                >
+                  <Trash2 size={18} aria-hidden="true" />
+                </button>
               </td>
             </tr>
           ))}
         </tbody>
       </table>
+      {actionError && (
+        <p role="alert" className="border-t px-4 py-3 text-sm text-red-700">
+          {actionError}
+        </p>
+      )}
     </div>
   );
 }

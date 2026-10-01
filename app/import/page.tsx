@@ -2,19 +2,94 @@
 
 import { Upload } from "lucide-react";
 import { useRef, useState } from "react";
+import type { DragEvent } from "react";
 import Sidebar from "@/components/Sidebar";
 import Topbar from "@/components/Topbar";
 import { useRouter } from "next/navigation";
 import Papa from "papaparse";
 import api from "@/services/api";
+
+const REQUIRED_COLUMNS = [
+  "transaction_id",
+  "customer_id",
+  "amount",
+  "country",
+  "merchant",
+  "timestamp",
+];
+
 export default function ImportPage() {
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [previewData, setPreviewData] = useState<Record<string, string>[]>([]);
+  const [fileError, setFileError] = useState("");
+  const [canImport, setCanImport] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const router = useRouter();
   const [importing, setImporting] = useState(false);
+
+  const processFile = (file: File) => {
+    setSelectedFile(file);
+    setPreviewData([]);
+    setFileError("");
+    setCanImport(false);
+
+    if (!file.name.toLowerCase().endsWith(".csv")) {
+      setFileError("Choose a CSV file to continue.");
+      return;
+    }
+
+    Papa.parse(file, {
+      header: true,
+      skipEmptyLines: true,
+      transformHeader: (header) => header.trim(),
+      complete: (results) => {
+        if (results.errors.length > 0) {
+          setFileError(`Could not read this CSV: ${results.errors[0].message}`);
+          return;
+        }
+
+        const fields = results.meta.fields ?? [];
+        const missingColumns = REQUIRED_COLUMNS.filter(
+          (column) => !fields.includes(column),
+        );
+        if (missingColumns.length > 0) {
+          setFileError(`Missing required columns: ${missingColumns.join(", ")}`);
+          return;
+        }
+
+        const rows = results.data as Record<string, string>[];
+        if (rows.length === 0) {
+          setFileError("This CSV has a header but no transaction rows.");
+          return;
+        }
+
+        const invalidRow = rows.findIndex((row) =>
+          REQUIRED_COLUMNS.some((column) => !row[column]?.trim()) ||
+          !Number.isFinite(Number(row.amount)) ||
+          !Number.isFinite(Date.parse(row.timestamp)),
+        );
+        if (invalidRow !== -1) {
+          setFileError(`Row ${invalidRow + 2} has a missing or invalid required value.`);
+          return;
+        }
+
+        setPreviewData(rows.slice(0, 10));
+        setCanImport(true);
+      },
+    });
+  };
+
+  const handleDrop = (event: DragEvent<HTMLDivElement>) => {
+    event.preventDefault();
+    setIsDragging(false);
+
+    const file = event.dataTransfer.files[0];
+    if (file) processFile(file);
+  };
+
   const handleImport = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !canImport) return;
 
     setImporting(true);
 
@@ -31,7 +106,7 @@ export default function ImportPage() {
       router.push("/");
     } catch (error) {
       console.error(error);
-      alert("Import failed.");
+      setFileError("Import failed. Check that the backend is running and try again.");
     } finally {
       setImporting(false);
     }
@@ -52,7 +127,24 @@ export default function ImportPage() {
             Upload a CSV file containing transaction data.
           </p>
 
-          <div className="bg-white rounded-2xl border-2 border-dashed border-gray-300 p-12 text-center">
+          <div
+            onDragEnter={(event) => {
+              event.preventDefault();
+              setIsDragging(true);
+            }}
+            onDragOver={(event) => event.preventDefault()}
+            onDragLeave={(event) => {
+              if (!event.currentTarget.contains(event.relatedTarget as Node)) {
+                setIsDragging(false);
+              }
+            }}
+            onDrop={handleDrop}
+            className={`rounded-2xl border-2 border-dashed p-12 text-center transition-colors ${
+              isDragging
+                ? "border-blue-500 bg-blue-50"
+                : "border-gray-300 bg-white"
+            }`}
+          >
             <Upload className="mx-auto mb-4 text-gray-400" size={48} />
 
             <h2 className="text-xl font-semibold mb-2">
@@ -67,27 +159,15 @@ export default function ImportPage() {
               type="file"
               accept=".csv"
               className="hidden"
-              onChange={(e) => {
-                const file = e.target.files?.[0];
-
-                if (!file) return;
-
-                setSelectedFile(file);
-
-                Papa.parse(file, {
-                  header: true,
-                  skipEmptyLines: true,
-                  complete: (results) => {
-                    setPreviewData(
-                      results.data.slice(0, 10) as Record<string, string>[],
-                    );
-                  },
-                });
+              onChange={(event) => {
+                const file = event.target.files?.[0];
+                if (file) processFile(file);
+                event.target.value = "";
               }}
             />
             <button
               onClick={() => fileInputRef.current?.click()}
-              className="bg-slate-900 text-white px-6 py-3 rounded-xl hover:bg-slate-800 transition"
+              className="bg-slate-900 text-white px-6 py-3 rounded-xl font-medium shadow-sm cursor-pointer transition-all duration-200 hover:-translate-y-0.5 hover:bg-slate-700 hover:shadow-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-slate-500 focus-visible:ring-offset-2 active:translate-y-0 active:scale-[0.98]"
             >
               Choose File
             </button>
@@ -99,6 +179,11 @@ export default function ImportPage() {
                   {(selectedFile.size / 1024).toFixed(1)} KB
                 </p>
               </div>
+            )}
+            {fileError && (
+              <p role="alert" className="mt-4 text-sm text-red-700">
+                {fileError}
+              </p>
             )}
             {previewData.length > 0 && (
               <div className="mt-6 bg-white border rounded-xl p-4 text-left">
@@ -133,9 +218,10 @@ export default function ImportPage() {
             )}
             <button
               onClick={handleImport}
-              className="mt-6 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition"
+              disabled={!canImport || importing}
+              className="mt-6 bg-green-600 text-white px-6 py-3 rounded-xl hover:bg-green-700 transition disabled:cursor-not-allowed disabled:opacity-50"
             >
-              Import to Database
+              {importing ? "Importing…" : "Import to Database"}
             </button>
           </div>
 

@@ -15,6 +15,7 @@ type Transaction = {
   country: string;
   merchant: string;
   risk_score: number;
+  status?: string;
 };
 
 export default function Home() {
@@ -30,6 +31,20 @@ export default function Home() {
       transaction.transaction_id.toLowerCase().includes(search.toLowerCase()) ||
       transaction.customer_id.toLowerCase().includes(search.toLowerCase()),
   );
+  const handleStatusChange = (transactionId: string, status: string) => {
+    setTransactions((current) =>
+      current.map((transaction) =>
+        transaction.transaction_id === transactionId
+          ? { ...transaction, status }
+          : transaction,
+      ),
+    );
+  };
+  const handleDelete = (transactionId: string) => {
+    setTransactions((current) =>
+      current.filter((transaction) => transaction.transaction_id !== transactionId),
+    );
+  };
   const highRisk = transactions.filter((t) => t.risk_score >= 50).length;
   const countries = new Set(transactions.map((t) => t.country)).size;
 
@@ -63,7 +78,11 @@ export default function Home() {
             />
           </div>
           <div className="space-y-3">
-            <TransactionTable transactions={filteredTransactions} />{" "}
+            <TransactionTable
+              transactions={filteredTransactions}
+              onStatusChange={handleStatusChange}
+              onDelete={handleDelete}
+            />{" "}
           </div>
         </div>
       </main>
