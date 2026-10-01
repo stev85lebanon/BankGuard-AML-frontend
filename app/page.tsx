@@ -22,9 +22,15 @@ export default function Home() {
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [search, setSearch] = useState("");
   useEffect(() => {
-    api.get("/transactions").then((response) => {
-      setTransactions(response.data.transactions);
-    });
+    api
+      .get("/transactions")
+      .then((response) => {
+        console.log("Transactions response:", response.data);
+        setTransactions(response.data.transactions);
+      })
+      .catch((error) => {
+        console.error("Transactions request failed:", error);
+      });
   }, []);
   const filteredTransactions = transactions.filter(
     (transaction) =>
@@ -66,8 +72,7 @@ export default function Home() {
 
             <SummaryCard title="Countries" value={countries} />
           </div>
-
-          <h2 className="text-xl font-semibold mb-4">Transactions</h2>
+          <h2 className="text-xl font-semibold mb-4">Transactions</h2>{" "}
           <div className="mb-6">
             <input
               type="text"
