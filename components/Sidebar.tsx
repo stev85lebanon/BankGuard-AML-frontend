@@ -29,8 +29,12 @@ export default function Sidebar() {
         </Link>
 
         <Link
-          href="/"
-          className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-800"
+          href="/transactions"
+          className={`flex items-center gap-3 rounded-lg p-3 transition ${
+            pathname === "/transactions" || pathname.startsWith("/transactions/")
+              ? "bg-slate-800 text-white"
+              : "hover:bg-slate-800"
+          }`}
         >
           <Wallet size={20} />
           Transactions
